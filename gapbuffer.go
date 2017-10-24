@@ -3,6 +3,7 @@ package gapbuffer
 
 import (
 	"io"
+	"unicode/utf8"
 )
 
 type GapBuffer struct {
@@ -92,5 +93,24 @@ func (gp *GapBuffer) Len() int {
 }
 
 func (gp *GapBuffer) WriteTo(w io.Writer) {
-	w.Write([]byte(gp.String()))
+	buf := make([]byte, 4096)
+	pos := 0
+	for _, r := range gp.data[:gp.gapPos] {
+		if pos >= len(buf)-4 {
+			w.Write(buf[:pos])
+			pos = 0
+		}
+		pos += utf8.EncodeRune(buf[pos:], r)
+	}
+	for _, r := range gp.data[gp.gapPos+gp.gapLen:] {
+		if pos >= len(buf)-4 {
+			w.Write(buf[:pos])
+			pos = 0
+		}
+		pos += utf8.EncodeRune(buf[pos:], r)
+	}
+	if pos > 0 {
+		w.Write(buf[:pos])
+		pos = 0
+	}
 }
