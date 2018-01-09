@@ -85,6 +85,9 @@ func (gp *GapBuffer) Get(pos int) rune {
 	if pos >= gp.gapPos {
 		pos += gp.gapLen
 	}
+	if pos >= len(gp.data) {
+		return '\x00'
+	}
 	return gp.data[pos]
 }
 
@@ -95,12 +98,14 @@ func (gp *GapBuffer) Len() int {
 func (gp *GapBuffer) WriteTo(w io.Writer) {
 	buf := make([]byte, 4096)
 	pos := 0
-	for _, r := range gp.data[:gp.gapPos] {
-		if pos >= len(buf)-4 {
-			w.Write(buf[:pos])
-			pos = 0
+	if gp.gapPos > 0 {
+		for _, r := range gp.data[:gp.gapPos] {
+			if pos >= len(buf)-4 {
+				w.Write(buf[:pos])
+				pos = 0
+			}
+			pos += utf8.EncodeRune(buf[pos:], r)
 		}
-		pos += utf8.EncodeRune(buf[pos:], r)
 	}
 	for _, r := range gp.data[gp.gapPos+gp.gapLen:] {
 		if pos >= len(buf)-4 {
